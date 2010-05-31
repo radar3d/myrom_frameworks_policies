@@ -25,7 +25,6 @@ import android.database.ContentObserver;
 import static android.os.BatteryManager.BATTERY_STATUS_CHARGING;
 import static android.os.BatteryManager.BATTERY_STATUS_FULL;
 import static android.os.BatteryManager.BATTERY_STATUS_UNKNOWN;
-import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.Settings;
@@ -70,9 +69,9 @@ public class KeyguardUpdateMonitor {
     private boolean mKeyguardBypassEnabled;
 
     private boolean mDevicePluggedIn;
-
+    
     private boolean mDeviceProvisioned;
-
+    
     private int mBatteryLevel;
 
     private CharSequence mTelephonyPlmn;
@@ -87,7 +86,7 @@ public class KeyguardUpdateMonitor {
     private ArrayList<InfoCallback> mInfoCallbacks = Lists.newArrayList();
     private ArrayList<SimStateCallback> mSimStateCallbacks = Lists.newArrayList();
     private ContentObserver mContentObserver;
-
+    
 
     // messages for the handler
     private static final int MSG_CONFIGURATION_CHANGED = 300;
@@ -95,15 +94,14 @@ public class KeyguardUpdateMonitor {
     private static final int MSG_BATTERY_UPDATE = 302;
     private static final int MSG_CARRIER_INFO_UPDATE = 303;
     private static final int MSG_SIM_STATE_CHANGE = 304;
-    private static final int MSG_RINGER_MODE_CHANGED = 305;
 
 
     /**
-     * When we receive a
-     * {@link com.android.internal.telephony.TelephonyIntents#ACTION_SIM_STATE_CHANGED} broadcast,
+     * When we receive a 
+     * {@link com.android.internal.telephony.TelephonyIntents#ACTION_SIM_STATE_CHANGED} broadcast, 
      * and then pass a result via our handler to {@link KeyguardUpdateMonitor#handleSimStateChange},
      * we need a single object to pass to the handler.  This class helps decode
-     * the intent and provide a {@link SimCard.State} result.
+     * the intent and provide a {@link SimCard.State} result. 
      */
     private static class SimArgs {
 
@@ -142,7 +140,7 @@ public class KeyguardUpdateMonitor {
 
     public KeyguardUpdateMonitor(Context context) {
         mContext = context;
-
+        
         mHandler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -162,9 +160,6 @@ public class KeyguardUpdateMonitor {
                     case MSG_SIM_STATE_CHANGE:
                         handleSimStateChange((SimArgs) msg.obj);
                         break;
-                    case MSG_RINGER_MODE_CHANGED:
-                        handleRingerModeChange(msg.arg1);
-                        break;
                 }
             }
         };
@@ -174,7 +169,7 @@ public class KeyguardUpdateMonitor {
 
         mDeviceProvisioned = Settings.Secure.getInt(
                 mContext.getContentResolver(), Settings.Secure.DEVICE_PROVISIONED, 0) != 0;
-
+     
         // Since device can't be un-provisioned, we only need to register a content observer
         // to update mDeviceProvisioned when we are...
         if (!mDeviceProvisioned) {
@@ -182,7 +177,7 @@ public class KeyguardUpdateMonitor {
                 @Override
                 public void onChange(boolean selfChange) {
                     super.onChange(selfChange);
-                    mDeviceProvisioned = Settings.Secure.getInt(mContext.getContentResolver(),
+                    mDeviceProvisioned = Settings.Secure.getInt(mContext.getContentResolver(), 
                         Settings.Secure.DEVICE_PROVISIONED, 0) != 0;
                     if (mDeviceProvisioned && mContentObserver != null) {
                         // We don't need the observer anymore...
@@ -192,17 +187,17 @@ public class KeyguardUpdateMonitor {
                     if (DEBUG) Log.d(TAG, "DEVICE_PROVISIONED state = " + mDeviceProvisioned);
                 }
             };
-
+            
             mContext.getContentResolver().registerContentObserver(
                     Settings.Secure.getUriFor(Settings.Secure.DEVICE_PROVISIONED),
                     false, mContentObserver);
-
+            
             // prevent a race condition between where we check the flag and where we register the
             // observer by grabbing the value once again...
-            mDeviceProvisioned = Settings.Secure.getInt(mContext.getContentResolver(),
+            mDeviceProvisioned = Settings.Secure.getInt(mContext.getContentResolver(), 
                 Settings.Secure.DEVICE_PROVISIONED, 0) != 0;
         }
-
+        
         mInPortrait = queryInPortrait();
         mKeyboardOpen = queryKeyboardOpen();
 
@@ -222,7 +217,6 @@ public class KeyguardUpdateMonitor {
         filter.addAction(Intent.ACTION_TIMEZONE_CHANGED);
         filter.addAction(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         filter.addAction(SPN_STRINGS_UPDATED_ACTION);
-        filter.addAction(AudioManager.RINGER_MODE_CHANGED_ACTION);
         context.registerReceiver(new BroadcastReceiver() {
 
             public void onReceive(Context context, Intent intent) {
@@ -248,23 +242,13 @@ public class KeyguardUpdateMonitor {
                             pluggedInStatus,
                             batteryLevel);
                     mHandler.sendMessage(msg);
-                } else if (TelephonyIntents.ACTION_SIM_STATE_CHANGED.equals(action)) {
+                } else if (TelephonyIntents.ACTION_SIM_STATE_CHANGED.equals(action)){
                     mHandler.sendMessage(mHandler.obtainMessage(
                             MSG_SIM_STATE_CHANGE,
                             new SimArgs(intent)));
-                } else if (AudioManager.RINGER_MODE_CHANGED_ACTION.equals(action)) {
-                    mHandler.sendMessage(mHandler.obtainMessage(MSG_RINGER_MODE_CHANGED,
-                            intent.getIntExtra(AudioManager.EXTRA_RINGER_MODE, -1), 0));
                 }
             }
         }, filter);
-    }
-
-    protected void handleRingerModeChange(int mode) {
-        if (DEBUG) Log.d(TAG, "handleRingerModeChange(" + mode + ")");
-        for (int i = 0; i < mInfoCallbacks.size(); i++) {
-            mInfoCallbacks.get(i).onRingerModeChanged(mode);
-        }
     }
 
     /**
@@ -459,7 +443,7 @@ public class KeyguardUpdateMonitor {
     }
 
     /**
-     * Callback for general information relevant to lock screen.
+     * Callback for general information releveant to lock screen.
      */
     interface InfoCallback {
         void onRefreshBatteryInfo(boolean showBatteryInfo, boolean pluggedIn, int batteryLevel);
@@ -471,13 +455,6 @@ public class KeyguardUpdateMonitor {
          * @param spn The service provider name.  May be null if it shouldn't be displayed.
          */
         void onRefreshCarrierInfo(CharSequence plmn, CharSequence spn);
-
-        /**
-         * Called when the ringer mode changes.
-         * @param state the current ringer state, as defined in
-         * {@link AudioManager#RINGER_MODE_CHANGED_ACTION}
-         */
-        void onRingerModeChanged(int state);
     }
 
     /**
